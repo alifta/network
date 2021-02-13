@@ -30,11 +30,12 @@ def get_data(filename='fremont.csv', url=FREMONT_URL, force_download=False):
     # Read data from CSV file
     data = pd.read_csv('./data/fremont.csv', index_col='Date')
     # data = pd.read_csv('./data/fremont.csv', index_col='Date', parse_dates=True)
+    data.columns = ['Total', 'East', 'West']
 
     # Convert the index format from string to datetime
     try:
         # Put in try incase data has changed
-        data.index = pd.to_datetime(data.index, format='%m/%d/%Y %H:%M:%S %p')
+        data.index = pd.to_datetime(data.index, format='%m/%d/%Y %I:%M:%S %p')
     except TypeError:
         # Convert without specif format, may take longer but with correct result
         data.index = pd.to_datetime(data.index)
