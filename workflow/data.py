@@ -23,11 +23,20 @@ def get_data(filename='fremont.csv', url=FREMONT_URL, force_download=False):
         data : pandas.DataFrame
             the fremont bridge data
     """
+    # Download the data, if necessary
     if force_download or not os.path.exists(filename):
-        # Download the data
         urlretrieve(url, './data/fremont.csv')
-    # Read data from downloaded CSV file
-    data = pd.read_csv('./data/fremont.csv',
-                       index_col='Date',
-                       parse_dates=True)
+
+    # Read data from CSV file
+    data = pd.read_csv('./data/fremont.csv', index_col='Date')
+    # data = pd.read_csv('./data/fremont.csv', index_col='Date', parse_dates=True)
+
+    # Convert the index format from string to datetime
+    try:
+        # Put in try incase data has changed
+        data.index = pd.to_datetime(data.index, format='%m/%d/%Y %H:%M:%S %p')
+    except TypeError:
+        # Convert without specif format, may take longer but with correct result
+        data.index = pd.to_datetime(data.index)
+
     return data
