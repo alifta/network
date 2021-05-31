@@ -7,6 +7,9 @@ data
 # VS Code
 .vscode
 
+# Python virtual environment
+venv
+
 # Byte compiled
 __pycache__/
 *.py[cod]

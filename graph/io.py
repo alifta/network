@@ -1,34 +1,40 @@
 import os
 
-# Project folder
+# Workspace
 ROOT = os.path.dirname(os.getcwd())
-# Package folder
-PACKAGE = os.path.join(ROOT, 'UIUC')
+# Network package
+PACKAGE = os.path.join(ROOT, 'Network')
 # Data folder
 DATA = os.path.join(PACKAGE, 'data')
-# Dataset folder
-DATASET = os.path.join(PACKAGE, DATA, 'dataset')
-# Database folder
-DB = os.path.join(PACKAGE, DATA, 'db')
-# Extra files folder
-FILE = os.path.join(PACKAGE, DATA, 'file')
-# Image folder
-IMAGE = os.path.join(PACKAGE, DATA, 'image')
-# Graph folder
+# Graph modules
+GRAPH = os.path.join(PACKAGE, 'graph')
+# Notebook folder
+NOTEBOOK = os.path.join(PACKAGE, 'notebook')
+
+# UIUC project
+UIUC = os.path.join(DATA, 'uiuc')
+# Dataset files
+DATASET = os.path.join(UIUC, 'dataset')
+# DB files
+DB = os.path.join(UIUC, 'db')
+# (Extra) files
+FILE = os.path.join(UIUC, 'file')
+# HITS score files
+HITS = os.path.join(UIUC, 'hits')
+# Images files
+IMAGE = os.path.join(UIUC, 'image')
+# Network files
 NETWORK = os.path.join(PACKAGE, DATA, 'network')
-# HITS score folder
-HITS = os.path.join(PACKAGE, DATA, 'hits')
 
 
-def folder_create():
+def uiuc_folder_create():
     """
-    Create required folders for the project
+    Create required folders for the UIUC project
     where can be called in __init__.py
     """
-    os.makedirs(DATA, exist_ok=True)
     os.makedirs(DATASET, exist_ok=True)
     os.makedirs(DB, exist_ok=True)
     os.makedirs(FILE, exist_ok=True)
+    os.makedirs(HITS, exist_ok=True)
     os.makedirs(IMAGE, exist_ok=True)
     os.makedirs(NETWORK, exist_ok=True)
-    os.makedirs(HITS, exist_ok=True)
