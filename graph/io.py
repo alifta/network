@@ -24,7 +24,7 @@ HITS = os.path.join(UIUC, 'hits')
 # Images files
 IMAGE = os.path.join(UIUC, 'image')
 # Network files
-NETWORK = os.path.join(PACKAGE, DATA, 'network')
+NETWORK = os.path.join(UIUC, 'network')
 
 
 def uiuc_folder_create():

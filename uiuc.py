@@ -80,4 +80,4 @@ from graph import *
 # )
 
 # Reachability
-# reachability(output=True, save=False)
+reachability(output=True, save=True)
