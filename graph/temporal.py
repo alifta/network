@@ -16,8 +16,12 @@ import math
 import timeit
 import powerlaw
 
+import sqlite3
+from sqlite3 import Error
+
 import matplotlib as mpl
 import seaborn as sns
+
 sns.set_style('ticks')
 
 from sklearn.preprocessing import normalize
@@ -4482,7 +4486,7 @@ def hits_remove(
 #     df.to_csv(file_out[0], header=False, index=False)
 
 
-def reachability(
+def reachability_create(
     folder_in=NETWORK,
     folder_out=NETWORK,
     file_in=[
@@ -4492,8 +4496,9 @@ def reachability(
         'bt_ton_weights.csv',
     ],
     file_out=[
-        'reachability.csv',
-        'reachability.p',
+        'paths_reached.csv',
+        'paths_all.csv',
+        'paths_all.p',
     ],
     label_folder_in='',
     label_folder_out='',
@@ -4592,11 +4597,22 @@ def reachability(
 
     # Create dataframe of reachability -> Easy to use for path filtering
     df = pd.DataFrame(reached, columns=['n1', 'n2', 't1', 't2', 'd'])
+    reached.clear()
+    # Then sort ...
+    df.sort_values(
+        by=['n1', 'n2', 't1', 't2'],
+        inplace=True,
+        ignore_index=True,
+    )
+    # Finally save reachability dataframe and Hop dictionary
+    if save:
+        df.to_csv(file_out[0], header=False, index=False)
 
     # Check paths for hop-number or node-distance
     cc = 0  # Counter
     cr = 0  # Counter % passed
     cl = int(0.01 * r)  # Counter limit = 1 % of all paths
+    reached2 = []
     for (p1, p2, t1, t2), val in all_paths.items():
         d = val['d']
         if d < np.inf:
@@ -4604,21 +4620,126 @@ def reachability(
             if cc % cl == 0:
                 cr += 1
                 print(f'Processed {cr} % of all data ...')
-            mind = 0
             # Check if there is a path with shorter temporal distance
             q = df.loc[(df['n1'] == p1) & (df['n2'] == p2) & (df['t1'] >= t1) &
-                       (df['t2'] <= t2) & (df['d'] < d)]
-            # Check if it is direct edge or 1-hop between two nodes
-            # But in a shoeter time interval included in larger time window
-            if q.d.min() == 1:
-                # ndistances.append(1)
-                mind = 1
-                all_paths[(p1, p2, t1, t2)]['h'] = 1
+                       (df['t2'] <= t2)]
+            mind = q.d.min()
+            # This is minimum temporal distance
+            all_paths[(p1, p2, t1, t2)]['h'] = mind
+            reached2.append((p1, p2, t1, t2, d, mind))
+        else:
+            # Path does not exist
+            # Distance is infinity
+            # Then add to REACHED list to create new DF
+            all_paths[(p1, p2, t1, t2)]['h'] = np.inf
+            reached2.append((p1, p2, t1, t2, np.inf, np.inf))
 
-            # If it is not a direct connection
-            # And there are some intermediate nodes incolved
-            if q.d.min() > 1:
-                # Look at all shortest paths in that time range
+    # Create reachability again LOL
+    df = pd.DataFrame(reached2, columns=['n1', 'n2', 't1', 't2', 'd', 'h'])
+    reached2.clear()
+    # Then sort ...
+    df.sort_values(
+        by=['n1', 'n2', 't1', 't2'],
+        inplace=True,
+        ignore_index=True,
+    )
+    # Finally save reachability dataframe and Hop dictionary
+    if save:
+        df.to_csv(file_out[1], header=False, index=False)
+        with open(file_out[2], 'wb') as fp:
+            pickle.dump(all_paths, fp, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def reachability_calculate(
+    folder_in=NETWORK,
+    folder_out=NETWORK,
+    file_in=[
+        'bt_ton_network.gpickle',
+        'bt_temporal_nodes.csv',
+        'bt_temporal_times.csv',
+        'bt_ton_weights.csv',
+    ],
+    file_out=[
+        'paths_all.p',
+        'paths_all.csv',
+    ],
+    label_folder_in='',
+    label_folder_out='',
+    label_file_in='',
+    label_file_out='',
+    graph=None,
+    times=None,
+    nodes=None,
+    ew=None,
+    percentage=1,
+    output=True,
+    save=True,
+):
+    """
+    Every time this function only work on 1% of the data from 1 .. 100
+    """
+    # Edit paths
+    file_out = path_edit(
+        file_out,
+        folder_out,
+        label_file_out,
+        label_folder_out,
+    )
+
+    # Reading graph
+    if graph is None:
+        graph = ton_bt_read(
+            folder_in,
+            [file_in[0]],
+            label_folder_in,
+            label_file_in,
+        )
+
+    # Reading nodes
+    if nodes is None:
+        nodes = temporal_bt_nodes_read(
+            folder_in,
+            [file_in[1]],
+            label_folder_in,
+            label_file_in,
+        )
+    N = len(nodes)
+
+    # Reading times
+    if times is None:
+        times = temporal_bt_times_read(
+            folder_in,
+            [file_in[2]],
+            label_folder_in,
+            label_file_in,
+        )
+    T = len(times)
+
+    # Read all possible paths
+    with open(file_out[0], 'rb') as fp:
+        all_paths = pickle.load(fp)
+
+    reached = []
+    r = len(all_paths)
+
+    # Check paths for hop-number or node-distance
+    c = 0
+    cmin = (r // 100) * (percentage - 1)
+    cmax = (r // 100) * (percentage)
+    for (p1, p2, t1, t2), val in all_paths.items():
+        if c < cmin:
+            continue
+        if c > cmax:
+            break
+        # Only run if cmin <= c <= cmax
+        d = val['d']
+        h = val['h']
+        # There is a path ...
+        if d < np.inf:
+            # And the path hop is more than 1
+            if h > 1:
+                # Check the actual number of hop by filtering shortest path
+                # OR if there is a path with shorter temporal distance
                 sps = [
                     np.array(p) % N for p in nx.all_shortest_paths(
                         graph,
@@ -4636,31 +4757,31 @@ def reachability(
                     ]
                     spd[len(temp)].append(temp)
                 # Check only the shortest extracted paths
-                mind = min(spd.keys())
-                spd = spd[mind]
+                h = min(spd.keys())
+                spd = spd[h]
                 # Minus 1 (-1) because hop length is 1 less than number of nodes
-                all_paths[(p1, p2, t1, t2)]['h'] = mind - 1
+                all_paths[(p1, p2, t1, t2)]['h'] = h - 1
                 # Unique intermediate nodes invole in shortest path
                 paths = paths = set()
                 for x in spd:
                     paths.add(tuple(x[1:-1]))
                 all_paths[(p1, p2, t1, t2)]['p'] = [list(x) for x in paths]
-        else:
-            # Path does not exist
-            # Distance is infinity
-            # Then add to REACHED list to create new DF
-            reached.append((p1, p2, t1, t2, np.inf))
 
-    # Create reachability again LOL
-    df = pd.DataFrame(reached, columns=['n1', 'n2', 't1', 't2', 'd'])
-    # Then sort ...
-    df.sort_values(
-        by=['n1', 'n2', 't1', 't2'],
-        inplace=True,
-        ignore_index=True,
-    )
-    # Finally save reachability dataframe and Hop dictionary
+    # Check if this is the last iteration
+    # Create a new reachability dataframe with updated hop count
+    if cmax == r:
+        reached = []
+        for (p1, p2, t1, t2), val in all_paths.items():
+            reached.append((p1, p2, t1, t2, val['d'], val['h']))
+        df = pd.DataFrame(reached, columns=['n1', 'n2', 't1', 't2', 'd'])
+        df.sort_values(
+            by=['n1', 'n2', 't1', 't2'],
+            inplace=True,
+            ignore_index=True,
+        )
+        if save:
+            df.to_csv(file_out[1], header=False, index=False)
+
     if save:
-        df.to_csv(file_out[0], header=False, index=False)
-        with open(file_out[1], 'wb') as fp:
+        with open(file_out[0], 'wb') as fp:
             pickle.dump(all_paths, fp, protocol=pickle.HIGHEST_PROTOCOL)
