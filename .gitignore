@@ -1,11 +1,26 @@
-# Data folder
+# Ignore DATA folder
 data
-
-# Any CSV file to save space
-*.csv
+venv
+venv_gnn
 
 # VS Code
-.vscode
+*.vscode
+
+# Custom
+*.csv
+*.idea
+# *.txt
+# *.png
+# *.pdf
+*swp*
+*.sw?
+gcn_back
+.DS_STORE
+*.aux
+*.log
+*.out
+*.bbl
+*.synctex.gz
 
 # Python virtual environment
 venv
