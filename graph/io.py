@@ -14,17 +14,25 @@ NOTEBOOK = os.path.join(PACKAGE, 'notebook')
 # UIUC project
 UIUC = os.path.join(DATA, 'uiuc')
 # Dataset files
-DATASET = os.path.join(UIUC, 'dataset')
+UIUC_DATASET = os.path.join(UIUC, 'dataset')
 # DB files
-DB = os.path.join(UIUC, 'db')
+UIUC_DB = os.path.join(UIUC, 'db')
 # (Extra) files
-FILE = os.path.join(UIUC, 'file')
+UIUC_FILE = os.path.join(UIUC, 'file')
 # HITS score files
-HITS = os.path.join(UIUC, 'hits')
+UIUC_HITS = os.path.join(UIUC, 'hits')
 # Images files
-IMAGE = os.path.join(UIUC, 'image')
+UIUC_IMAGE = os.path.join(UIUC, 'image')
 # Network files
-NETWORK = os.path.join(UIUC, 'network')
+UIUC_NETWORK = os.path.join(UIUC, 'network')
+
+# PhoneLab Project
+PHONELAB = os.path.join(DATA, 'phonelab')
+PHONELAB_DATASET = os.path.join(PHONELAB, 'dataset')
+PHONELAB_CONNECT = os.path.join(PHONELAB_DATASET, 'connect')
+PHONELAB_SCAN = os.path.join(PHONELAB_DATASET, 'scan')
+PHONELAB_DB = os.path.join(PHONELAB, 'db')
+PHONELAB_NETWORK = os.path.join(PHONELAB, 'network')
 
 
 def uiuc_folder_create():
@@ -32,9 +40,9 @@ def uiuc_folder_create():
     Create required folders for the UIUC project
     where can be called in __init__.py
     """
-    os.makedirs(DATASET, exist_ok=True)
-    os.makedirs(DB, exist_ok=True)
-    os.makedirs(FILE, exist_ok=True)
-    os.makedirs(HITS, exist_ok=True)
-    os.makedirs(IMAGE, exist_ok=True)
-    os.makedirs(NETWORK, exist_ok=True)
+    os.makedirs(UIUC_DATASET, exist_ok=True)
+    os.makedirs(UIUC_DB, exist_ok=True)
+    os.makedirs(UIUC_FILE, exist_ok=True)
+    os.makedirs(UIUC_HITS, exist_ok=True)
+    os.makedirs(UIUC_IMAGE, exist_ok=True)
+    os.makedirs(UIUC_NETWORK, exist_ok=True)

@@ -1,25 +1,34 @@
-# Paths
-
-
-
+from datetime import datetime
 import os
+from collections import defaultdict
 
 from .io import *
 from .utils import *
 
 
-def dataset_db(file_input=['data'], file_output=['uiuc.db'], output=True):
+def uiuc_to_db(
+    folder_in=UIUC_DATASET,
+    folder_out=[UIUC_DB],
+    file_out=['uiuc.db'],
+    label_folder_in='',
+    label_folder_out='',
+    label_file_in='',
+    label_file_out='',
+    output=True
+):
     """
     Read log files of each user, detect user_hash based on the log names
     then rename the folder to the user_id and extract data from log files
     """
 
-    # Paths
-    DATA = os.path.join(ROOT_PATH, file_input[0])
-    DB = os.path.join(DB_PATH, file_output[0])
-
-    # Reading files
-    files = dir_walk(DATA)
+    # Edit paths
+    files = folder_walk(UIUC_DATASET)
+    file_out = path_edit(
+        file_out,
+        folder_out[0],
+        label_file_out,
+        label_folder_out,
+    )[0]
 
     # Dictionary {User : MAC}
     user_mac = {}
@@ -41,9 +50,9 @@ def dataset_db(file_input=['data'], file_output=['uiuc.db'], output=True):
     mac TEXT NOT NULL
     );
     '''
-    db_create(DB, query)
+    db_execute(file_out, query)
     query = 'INSERT INTO users VALUES (?,?)'
-    db_insert_many(DB, query, user_mac)
+    db_execute_many(file_out, query, user_mac)
 
     # Read BT and WiFI data
     # error_list = [] # TEST
@@ -81,7 +90,9 @@ def dataset_db(file_input=['data'], file_output=['uiuc.db'], output=True):
                 # String format
                 # last_time = lines[i]
                 # Datetime format
-                last_time = datetime.strptime(lines[i][2:], '%m-%d-%Y %H:%M:%S')
+                last_time = datetime.strptime(
+                    lines[i][2:], '%m-%d-%Y %H:%M:%S'
+                )
                 continue
             else:  # We read a line with mac address ...
                 # If last_time is out of range i.e. < 2010-2-25 then skip until read a valid one
@@ -134,10 +145,10 @@ def dataset_db(file_input=['data'], file_output=['uiuc.db'], output=True):
     mac TEXT NOT NULL
     );
     '''
-    db_create(DB, query)
+    db_execute(file_out, query)
     b_mac_insert = [(i, b_mac[i]) for i in range(len(b_mac))]
     query = 'INSERT INTO bluetooth VALUES (?,?)'
-    db_insert_many(DB, query, b_mac_insert)
+    db_execute_many(file_out, query, b_mac_insert)
 
     # Save {WiFi_id : WiFi_MAC} to DB
     query = f'''
@@ -146,10 +157,10 @@ def dataset_db(file_input=['data'], file_output=['uiuc.db'], output=True):
     mac TEXT NOT NULL
     );
     '''
-    db_create(DB, query)
+    db_execute(file_out, query)
     w_mac_insert = [(i, w_mac[i]) for i in range(len(w_mac))]
     query = 'INSERT INTO wifi VALUES (?,?)'
-    db_insert_many(DB, query, w_mac_insert)
+    db_execute_many(file_out, query, w_mac_insert)
 
     # Save BT and WiFi logs to DB with following columns
     # user_node, bluetooth_node / ap_node , time, bluetooth = 0 / wifi = 1
@@ -162,7 +173,7 @@ def dataset_db(file_input=['data'], file_output=['uiuc.db'], output=True):
     wifi INTEGER
     );
     '''
-    db_create(DB, query)
+    db_execute(file_out, query)
     interaction_insert = []
     for k, v in user_b.items():  # k = user
         # v is a list of interactions = (time, MAC)
@@ -172,7 +183,47 @@ def dataset_db(file_input=['data'], file_output=['uiuc.db'], output=True):
         for item in v:
             interaction_insert.append((k, item[1], item[0], 1))
     query = 'INSERT INTO logs(user,mac,time,wifi) VALUES (?,?,?,?)'
-    db_insert_many(DB, query, interaction_insert)
+    db_execute_many(file_out, query, interaction_insert)
 
     if output:
         print('# interactions:', len(interaction_insert))
+
+
+def phonelab_to_db(
+    folder_in=[PHONELAB_CONNECT, PHONELAB_SCAN],
+    folder_out=[PHONELAB_DB],
+    file_out=['phonelab.db'],
+    label_folder_in='',
+    label_folder_out='',
+    label_file_in='',
+    label_file_out='',
+    output=True
+):
+    """
+    Read PhoneLab dataset and create a DB file
+
+    Scan folder has more device (=277) than connect folder (=274)
+    thus we create device names from scan folder
+
+    """
+
+    # Edit paths and reading folders/files
+    files_connect = folder_walk(folder_in[0])
+    files_scan = folder_walk(folder_in[1])
+
+    file_out = path_edit(
+        file_out,
+        folder_out[0],
+        label_file_out,
+        label_folder_out,
+    )[0]
+
+    # Create database
+    query = """ CREATE TABLE IF NOT EXISTS users (id integer PRIMARY KEY, name text NOT NULL); """
+    db_execute(file_out, query)
+
+    query = """ CREATE TABLE IF NOT EXISTS scanned (id integer PRIMARY KEY, user_id integer not null, ssid text NOT NULL, bssid text NOT NULL, time integer NOT NULL, day integer NOT NULL, hour integer NOT NULL, minute integer NOT NULL, signal integer NOT NULL, FOREIGN KEY (user_id) REFERENCES users (id)); """
+    db_execute(file_out, query)
+
+    query = """ CREATE TABLE IF NOT EXISTS connected (id integer PRIMARY KEY, user_id integer not null, ssid text NOT NULL, bssid text NOT NULL, time integer NOT NULL, day integer NOT NULL, hour integer NOT NULL, minute integer NOT NULL, FOREIGN KEY (user_id) REFERENCES users (id)); """
+    db_execute(file_out, query)
