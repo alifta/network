@@ -15,6 +15,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 from pylab import matplotlib, cm
 import seaborn as sns
+
 sns.set_style("ticks")
 
 from .io import *
