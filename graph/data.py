@@ -1,5 +1,6 @@
+from time import time
+import pandas as pd
 from datetime import datetime
-import os
 from collections import defaultdict
 
 from .io import *
@@ -206,10 +207,139 @@ def phonelab_to_db(
     thus we create device names from scan folder
 
     """
+    def db_initialize(file_out):
+        """
+        Create database and its tables
+        """
+        # Users
+        query = """ CREATE TABLE IF NOT EXISTS users (id integer PRIMARY KEY, name text NOT NULL); """
+        db_execute(file_out, query)
+
+        # SSID
+        query = """ CREATE TABLE IF NOT EXISTS ssids (id integer PRIMARY KEY, name text NOT NULL); """
+        db_execute(file_out, query)
+
+        # BSSID
+        query = """ CREATE TABLE IF NOT EXISTS bssids (id integer PRIMARY KEY, name text NOT NULL); """
+        db_execute(file_out, query)
+
+        # Zones (SSID -> BSSID)
+        query = """ CREATE TABLE IF NOT EXISTS zones (id integer PRIMARY KEY, ssid integer NOT NULL, bssid integer NOT NULL, FOREIGN KEY (ssid) REFERENCES ssids (id), FOREIGN KEY (bssid) REFERENCES bssids (id)); """
+        db_execute(file_out, query)
+
+        # Logs
+        query = """ CREATE TABLE IF NOT EXISTS logs (id integer PRIMARY KEY, user integer NOT NULL, ssid integer NOT NULL, bssid integer NOT NULL, connect integer NOT NULL,time integer NOT NULL, date text NOT NULL, day integer NOT NULL, hour integer NOT NULL, minute integer NOT NULL, FOREIGN KEY (user) REFERENCES users (id), FOREIGN KEY (ssid) REFERENCES ssids (id), FOREIGN KEY (bssid) REFERENCES bssids (id)); """
+        db_execute(file_out, query)
+
+    def db_add_users(folder_in, file_out):
+        """
+        Create a new project into the projects table
+        """
+        users = folder_walk_folder(folder_in, name=True)
+        users = list(enumerate(users, 0))
+        query = """ INSERT INTO users (id,name) VALUES (?,?) """
+        db_execute_many(file_out, query, users)
+
+    def db_lookup(name, con, table="ssids", add=True):
+        """
+        Check if ssid (or bssid) name exist, if not, add it to table
+        return the ID at the end
+        """
+        result = 0
+        action = ""
+        query = f"SELECT * FROM {table} WHERE name = ? LIMIT 1;"
+        cur = con.cursor()
+        # Look up the name of ssid (or bssid)
+        cur.execute(query, (name, ))
+        row = cur.fetchone()
+        if row is not None:
+            result = row[0]  # ID
+            action = "found"
+        else:
+            if add:
+                # Not found, add to DB
+                query = f"INSERT INTO {table} (name) VALUES(?);"
+                cur.execute(query, (name, ))
+                con.commit()
+                result = cur.lastrowid
+                action = "added"
+        cur.close()
+        return (result, action)
+
+    def db_zone(ssid, bssid, con):
+        """
+        Check the zone table for ssid -> bssid entry
+        If missing, add it to the table
+        """
+        query = f"SELECT * FROM zones WHERE ssid = ? AND bssid = ? LIMIT 1;"
+        cur = con.cursor()
+        # Look up the name of ssid -> bssid entry
+        cur.execute(query, (ssid, bssid))
+        row = cur.fetchone()
+        if row is None:
+            # Not found, add to DB
+            query = f"INSERT INTO zones (ssid,bssid) VALUES(?,?);"
+            cur.execute(query, (ssid, bssid))
+            con.commit()
+        cur.close()
+
+    def db_add_log(user, ssid, bssid, connect, time: datetime, con):
+        query = f"INSERT INTO logs (user,ssid,bssid,connect,time,date,day,hour,minute) VALUES (?,?,?,?,?,?,?,?,?);"
+        cur = con.cursor()
+        cur.execute(
+            query, (
+                user, ssid, bssid, connect, time, time.date(), time.weekday(),
+                time.hour, time.minute
+            )
+        )
+
+    def db_complete(folder_in, file_out, connect=1):
+        # i = 0
+        folders = folder_walk_folder(folder_in)
+        # Enter each user's folder
+        for folder in folders:
+            # i += 1
+            try:
+                con = sqlite3.connect(file_out)
+                # Extract user name and if from folder name
+                user = folder.split('/')[-1]
+                user_id = db_lookup(user, con, 'users', False)[0]
+                print(user_id, ':', user)
+                # Read every file
+                for file_path in folder_walk(folder):
+                    with open(file_path) as f:
+                        # Analyze each line
+                        for line in f:
+                            # Convert line to dictionary
+                            line_dict = json.loads(line)
+                            # Only add connection if connected flag is true
+                            connect_flag = line_dict.get('connected', False)
+                            if connect_flag or connect == 0:
+                                # Check if SSID has been observed before
+                                # If yes, get the id, if not add and get id
+                                ssid_id = db_lookup(line_dict['SSID'], con)[0]
+                                bssid_id = db_lookup(
+                                    line_dict['BSSID'], con, table='bssids'
+                                )[0]
+                                db_zone(ssid_id, bssid_id, con)
+                                t = datetime.utcfromtimestamp(
+                                    int(line_dict['timestamp'])
+                                )
+                                db_add_log(
+                                    user_id, ssid_id, bssid_id, connect, t, con
+                                )
+                # Commit the changes
+                con.commit()
+            except sqlite3.Error as e:
+                print(e)
+            finally:
+                con.close()
+            # if i == 1:
+            #     break
 
     # Edit paths and reading folders/files
-    files_connect = folder_walk(folder_in[0])
-    files_scan = folder_walk(folder_in[1])
+    # files_connect = folder_walk_folder(folder_in[0])
+    # files_scan = folder_walk_folder(folder_in[1])
 
     file_out = path_edit(
         file_out,
@@ -218,12 +348,81 @@ def phonelab_to_db(
         label_folder_out,
     )[0]
 
-    # Create database
-    query = """ CREATE TABLE IF NOT EXISTS users (id integer PRIMARY KEY, name text NOT NULL); """
-    db_execute(file_out, query)
+    # db_initialize(file_out)
 
-    query = """ CREATE TABLE IF NOT EXISTS scanned (id integer PRIMARY KEY, user_id integer not null, ssid text NOT NULL, bssid text NOT NULL, time integer NOT NULL, day integer NOT NULL, hour integer NOT NULL, minute integer NOT NULL, signal integer NOT NULL, FOREIGN KEY (user_id) REFERENCES users (id)); """
-    db_execute(file_out, query)
+    # db_add_users(folder_in[1], file_out)
 
-    query = """ CREATE TABLE IF NOT EXISTS connected (id integer PRIMARY KEY, user_id integer not null, ssid text NOT NULL, bssid text NOT NULL, time integer NOT NULL, day integer NOT NULL, hour integer NOT NULL, minute integer NOT NULL, FOREIGN KEY (user_id) REFERENCES users (id)); """
-    db_execute(file_out, query)
+    # Add connect logs to db
+    # db_complete(folder_in[0], file_out)
+
+    # Add scan logs to db
+    db_complete(folder_in[1], file_out, connect=0)
+
+    # Remove noise of DB
+    # The records before 2014-11-07 (= 43 rows of connect)
+    # And same for dates after 2015-04-03 (= zero rows is returned)
+    # query = f"DELETE FROM logs WHERE date < '2014-11-07';"
+    # db_execute(file_out, query)
+
+
+def phonelab_sp(
+    folder_in=[PHONELAB_DB],
+    folder_out=[PHONELAB_DB],
+    file_in=['phonelab.db'],
+    file_out=['phonelab.db'],
+    label_folder_in='',
+    label_folder_out='',
+    label_file_in='',
+    label_file_out='',
+    output=True
+):
+    """
+    Connect to PhoneLab database file, create spario-temporal matrix
+    """
+    def db_select_df(file_in, query):
+        try:
+            con = sqlite3.connect(file_in)
+            df = pd.read_sql_query(query, con)
+            # df = pd.read_sql_query(query, con, parse_dates=['date'])
+        except sqlite3.Error as error:
+            print(error)
+        finally:
+            con.close()
+        return df
+
+    # Edit paths
+    file_in = path_edit(
+        file_in,
+        folder_in[0],
+        label_file_in,
+        label_folder_in,
+    )[0]
+
+    file_out = path_edit(
+        file_out,
+        folder_out[0],
+        label_file_out,
+        label_folder_out,
+    )[0]
+
+    # Connect to DB
+    print(file_in)
+
+    # Calculate unique dates in DB
+    query = f'SELECT DISTINCT date FROM logs ORDER BY date;'
+    df = db_select_df(file_in, query)
+    times = pd.to_datetime(df['date'])
+
+    query = f'SELECT DISTINCT id FROM ssids ORDER BY id;'
+    df = db_select_df(file_in, query)
+    ssids = list(df['id'].index)  # 1176 SSID was detected
+
+    # Cycle through each date, read logs
+    times = [times[0]]  # Test
+    for t in times:
+        print('date:', t.date())
+        query = f'SELECT user,ssid,time FROM logs WHERE date = \'{t.date()}\' ORDER BY date;'
+        df = db_select_df(file_in, query)
+        df['time'] = pd.to_datetime(df['time'])
+        df['time'] = df['time'].apply(lambda x: x.replace(minute=0, second=0))
+        print(df)

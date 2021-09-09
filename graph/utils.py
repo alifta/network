@@ -57,6 +57,22 @@ def db_execute_many(db, query, data):
             con.close()
 
 
+def db_select(db, query):
+    result = []
+    try:
+        con = sqlite3.connect(db)
+        cur = con.cursor()
+        cur.execute(query)
+        result = cur.fetchall()
+        cur.close()
+    except sqlite3.Error as error:
+        print(error)
+    finally:
+        if con:
+            con.close()
+    return result
+
+
 def db_row_count(db, table, output=False):
     """
     Count the number of entries in specified table of database
@@ -129,6 +145,28 @@ def folder_walk(path, ext='', save=False):
             # If extension is not set, meaning we want all the files
             else:
                 f.append(os.path.abspath(relative_path))
+    f.sort()
+    if save: np.savetxt('files.csv', f, delimiter=',', fmt='%s')
+    return f
+
+
+def folder_walk_folder(path, name=False, relative=False, save=False):
+    """
+    Iterate inside folder and find all sub-folders
+    """
+    f = []
+    for root, dirs, files in os.walk(path):
+        for dir in dirs:
+            # If name is set True just return name of folders
+            if name:
+                f.append(dir)
+            # Else return path of folders
+            else:
+                relative_path = os.path.join(root, dir)
+                if relative:
+                    f.append(relative_path)
+                else:
+                    f.append(os.path.abspath(relative_path))
     f.sort()
     if save: np.savetxt('files.csv', f, delimiter=',', fmt='%s')
     return f

@@ -36,8 +36,8 @@ from .utils import *
 
 
 def temporal_bt(
-    folder_in=[FILE, DB],
-    folder_out=[NETWORK],
+    folder_in=[UIUC_FILE, UIUC_DB],
+    folder_out=[UIUC_NETWORK],
     file_in=['bt.csv', 'uiuc.db'],
     file_out=[
         'bt_temporal_network.gpickle',
@@ -388,7 +388,7 @@ def temporal_bt(
 
 
 def temporal_bt_read(
-    folder_in=NETWORK,
+    folder_in=UIUC_NETWORK,
     file_in=['bt_temporal_network.gpickle'],
     label_folder_in='',
     label_file_in='',
@@ -417,7 +417,7 @@ def temporal_bt_read(
 
 
 def temporal_bt_times_read(
-    folder_in=NETWORK,
+    folder_in=UIUC_NETWORK,
     file_in=['bt_temporal_times.csv'],
     label_folder_in='',
     label_file_in='',
@@ -447,7 +447,7 @@ def temporal_bt_times_read(
 
 
 def temporal_bt_nodes_read(
-    folder_in=NETWORK,
+    folder_in=UIUC_NETWORK,
     file_in=['bt_temporal_nodes.csv'],
     label_folder_in='',
     label_file_in='',
@@ -480,8 +480,8 @@ def temporal_bt_nodes_read(
 
 
 def static_bt(
-    folder_in=NETWORK,
-    folder_out=NETWORK,
+    folder_in=UIUC_NETWORK,
+    folder_out=UIUC_NETWORK,
     file_in=['bt_temporal_network.gpickle'],
     file_out=['bt_static_network.gpickle', 'bt_static_edgelist.csv'],
     label_folder_in='',
@@ -576,7 +576,7 @@ def static_bt(
 
 
 def static_bt_read(
-    folder_in=NETWORK,
+    folder_in=UIUC_NETWORK,
     file_in=['bt_static_network.gpickle'],
     label_folder_in='',
     label_file_in='',
@@ -630,8 +630,8 @@ def static_bt_read(
 
 
 def ton_bt(
-    folder_in=[DB, NETWORK],
-    folder_out=NETWORK,
+    folder_in=[UIUC_DB, UIUC_NETWORK],
+    folder_out=UIUC_NETWORK,
     file_in=[
         'uiuc.db',
         'bt_temporal_network.gpickle',
@@ -849,8 +849,8 @@ def ton_bt(
 
 
 def ton_bt_full(
-    folder_in=[DB, NETWORK],
-    folder_out=NETWORK,
+    folder_in=[UIUC_DB, UIUC_NETWORK],
+    folder_out=UIUC_NETWORK,
     file_in=[
         'uiuc.db',
         'bt_temporal_network.gpickle',
@@ -1117,8 +1117,8 @@ def ton_bt_full(
 
 
 def ton_bt_to_temporal(
-    folder_in=NETWORK,
-    folder_out=NETWORK,
+    folder_in=UIUC_NETWORK,
+    folder_out=UIUC_NETWORK,
     file_in=[
         'bt_ton_network.gpickle',
         'bt_temporal_nodes.csv',
@@ -1235,7 +1235,7 @@ def ton_bt_to_temporal(
 
 
 def ton_bt_read(
-    folder_in=NETWORK,
+    folder_in=UIUC_NETWORK,
     file_in=['bt_ton_network.gpickle'],
     label_folder_in='',
     label_file_in='',
@@ -1252,7 +1252,7 @@ def ton_bt_read(
 
 
 def ton_bt_full_read(
-    folder_in=NETWORK,
+    folder_in=UIUC_NETWORK,
     file_in=['bt_ton_full_network.gpickle'],
     label_folder_in='',
     label_file_in='',
@@ -1270,7 +1270,7 @@ def ton_bt_full_read(
 
 
 def ton_bt_analyze(
-    folder_in=NETWORK,
+    folder_in=UIUC_NETWORK,
     file_in=[
         'bt_temporal_network.gpickle',
         'bt_temporal_times.csv',
@@ -1379,8 +1379,8 @@ def ton_bt_analyze(
 
 
 def edge_weight(
-    folder_in=NETWORK,
-    folder_out=NETWORK,
+    folder_in=UIUC_NETWORK,
+    folder_out=UIUC_NETWORK,
     file_in=[
         'bt_ton_network.gpickle',
         'bt_temporal_nodes.csv',
@@ -1610,8 +1610,8 @@ def edge_weight(
 
 
 def prob(
-    folder_in=NETWORK,
-    folder_out=NETWORK,
+    folder_in=UIUC_NETWORK,
+    folder_out=UIUC_NETWORK,
     file_in=[
         'bt_ton_network.gpickle',
         'bt_temporal_nodes.csv',
@@ -1881,7 +1881,7 @@ def prob(
 
 
 def ew_read(
-    folder_in=NETWORK,
+    folder_in=UIUC_NETWORK,
     file_in=['bt_ton_weights.csv'],
     label_folder_in='',
     label_file_in='',
@@ -1908,7 +1908,7 @@ def ew_read(
 
 
 def prob_read(
-    folder_in=NETWORK,
+    folder_in=UIUC_NETWORK,
     file_in=['bt_ton_probs.csv'],
     label_folder_in='',
     label_file_in='',
@@ -1940,8 +1940,8 @@ def prob_read(
 
 
 def hits(
-    folder_in=NETWORK,
-    folder_out=HITS,
+    folder_in=UIUC_NETWORK,
+    folder_out=UIUC_HITS,
     file_in=[
         'bt_ton_network.gpickle',
         'bt_temporal_nodes.csv',
@@ -2346,7 +2346,7 @@ def hits(
 
 
 def hits_read(
-    folder_in=HITS,
+    folder_in=UIUC_HITS,
     file_in=['a.csv', 'h.csv'],
     label_folder_in='',
     label_file_in='',
@@ -2380,8 +2380,8 @@ def hits_read(
 
 
 def hits_conditional(
-    folder_in=[NETWORK, HITS],
-    folder_out=HITS,
+    folder_in=[UIUC_NETWORK, UIUC_HITS],
+    folder_out=UIUC_HITS,
     file_in=[
         'bt_temporal_nodes.csv',
         'bt_temporal_times.csv',
@@ -2512,7 +2512,7 @@ def hits_conditional(
 
 
 def hits_conditional_read(
-    folder_in=HITS,
+    folder_in=UIUC_HITS,
     file_in=[
         'a_array.csv',
         'h_array.csv',
@@ -2570,8 +2570,8 @@ def hits_conditional_read(
 
 
 def hits_analyze(
-    folder_in=[NETWORK, HITS],
-    folder_out=HITS,
+    folder_in=[UIUC_NETWORK, UIUC_HITS],
+    folder_out=UIUC_HITS,
     file_in=[
         'bt_ton_network.gpickle',
         'bt_temporal_nodes.csv',
@@ -3280,8 +3280,8 @@ def hits_analyze(
 
 
 def hits_group(
-    folder_in=[NETWORK, HITS],
-    folder_out=HITS,
+    folder_in=[UIUC_NETWORK, UIUC_HITS],
+    folder_out=UIUC_HITS,
     file_in=[
         'bt_ton_network.gpickle',
         'bt_temporal_nodes.csv',
@@ -3661,8 +3661,8 @@ def isim_hits(
 
 
 def hits_remove(
-    folder_in=[NETWORK, HITS],
-    folder_out=NETWORK,
+    folder_in=[UIUC_NETWORK, UIUC_HITS],
+    folder_out=UIUC_NETWORK,
     file_in=[
         'bt_ton_network.gpickle',
         'bt_temporal_nodes.csv',
@@ -4174,7 +4174,7 @@ def hits_remove(
             )
             # HITS
             a_new, h_new = hits(
-                folder_out=NETWORK,
+                folder_out=UIUC_NETWORK,
                 label_folder_in=label_epoch,
                 label_folder_out=label_epoch,
                 graph=graph,  # updated
@@ -4189,8 +4189,8 @@ def hits_remove(
             hubs[epoch_0] = h_new
             # Conditional HITS scores
             hits_conditional(
-                folder_in=[NETWORK, NETWORK],
-                folder_out=NETWORK,
+                folder_in=[UIUC_NETWORK, UIUC_NETWORK],
+                folder_out=UIUC_NETWORK,
                 label_folder_in=label_epoch,
                 label_folder_out=label_epoch,
                 a=a_new,
@@ -4201,8 +4201,8 @@ def hits_remove(
             )
             # Analyze HITS
             hits_analyze(
-                folder_in=[NETWORK, NETWORK],
-                folder_out=NETWORK,
+                folder_in=[UIUC_NETWORK, UIUC_NETWORK],
+                folder_out=UIUC_NETWORK,
                 label_folder_in=[label_epoch, label_epoch],
                 label_folder_out=label_epoch,
                 graph=graph,  # updated
@@ -4327,8 +4327,8 @@ def hits_remove(
 # ------------
 
 # def reachability(
-#     folder_in=NETWORK,
-#     folder_out=NETWORK,
+#     folder_in=UIUC_NETWORK,
+#     folder_out=UIUC_NETWORK,
 #     file_in=[
 #         'bt_ton_network.gpickle',
 #         'bt_temporal_nodes.csv',
@@ -4486,8 +4486,8 @@ def hits_remove(
 #     df.to_csv(file_out[0], header=False, index=False)
 
 # def reachability_create(
-#     folder_in=NETWORK,
-#     folder_out=NETWORK,
+#     folder_in=UIUC_NETWORK,
+#     folder_out=UIUC_NETWORK,
 #     file_in=[
 #         'bt_ton_network.gpickle',
 #         'bt_temporal_nodes.csv',
@@ -4650,8 +4650,8 @@ def hits_remove(
 
 
 def reachability_create(
-    folder_in=NETWORK,
-    folder_out=DB,
+    folder_in=UIUC_NETWORK,
+    folder_out=UIUC_DB,
     file_in=[
         'bt_ton_network.gpickle',
         'bt_temporal_nodes.csv',
@@ -4790,8 +4790,8 @@ def reachability_create(
 
 
 def reachability_calculate(
-    folder_in=NETWORK,
-    folder_out=NETWORK,
+    folder_in=UIUC_NETWORK,
+    folder_out=UIUC_NETWORK,
     file_in=[
         'bt_ton_network.gpickle',
         'bt_temporal_nodes.csv',
