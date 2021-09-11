@@ -16,12 +16,20 @@ from graph.data import *
 
 
 def main():
-    phonelab_sp(
-        folder_in=['/home/ali/Projects/Network/data/phonelab/db'],
-        file_in=['phonelab.db'],
-        label_folder_in='',
-        label_file_in='connect'
+    phonelab_to_db(
+        folder_in=[
+            '/home/ali/Projects/Network/data/phonelab/dataset/connect',
+            '/home/ali/Projects/Network/data/phonelab/dataset/scan'
+        ],
+        folder_out=['/home/ali/Projects/Network/data/phonelab/db']
     )
+
+    # phonelab_sp(
+    #     folder_in=['/home/ali/Projects/Network/data/phonelab/db'],
+    #     file_in=['phonelab.db'],
+    #     label_folder_in='',
+    #     label_file_in='connect'
+    # )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
-from time import time
+from scipy import sparse
+from itertools import permutations
 import pandas as pd
 from datetime import datetime
 from collections import defaultdict
@@ -231,6 +232,17 @@ def phonelab_to_db(
         query = """ CREATE TABLE IF NOT EXISTS logs (id integer PRIMARY KEY, user integer NOT NULL, ssid integer NOT NULL, bssid integer NOT NULL, connect integer NOT NULL,time integer NOT NULL, date text NOT NULL, day integer NOT NULL, hour integer NOT NULL, minute integer NOT NULL, FOREIGN KEY (user) REFERENCES users (id), FOREIGN KEY (ssid) REFERENCES ssids (id), FOREIGN KEY (bssid) REFERENCES bssids (id)); """
         db_execute(file_out, query)
 
+    def db_select_df(file_in, query):
+        try:
+            con = sqlite3.connect(file_in)
+            df = pd.read_sql_query(query, con)
+            # df = pd.read_sql_query(query, con, parse_dates=['date'])
+        except sqlite3.Error as error:
+            print(error)
+        finally:
+            con.close()
+        return df
+
     def db_add_users(folder_in, file_out):
         """
         Create a new project into the projects table
@@ -294,11 +306,13 @@ def phonelab_to_db(
         )
 
     def db_complete(folder_in, file_out, connect=1):
-        # i = 0
         folders = folder_walk_folder(folder_in)
         # Enter each user's folder
+        user_id = 67
+        query = f'SELECT name FROM users WHERE id >= {user_id} ORDER BY id;'
+        folders = db_select_df(file_out, query)['name']
+        folders = [os.path.join(folder_in, f) for f in folders]
         for folder in folders:
-            # i += 1
             try:
                 con = sqlite3.connect(file_out)
                 # Extract user name and if from folder name
@@ -334,8 +348,6 @@ def phonelab_to_db(
                 print(e)
             finally:
                 con.close()
-            # if i == 1:
-            #     break
 
     # Edit paths and reading folders/files
     # files_connect = folder_walk_folder(folder_in[0])
@@ -355,7 +367,7 @@ def phonelab_to_db(
     # Add connect logs to db
     # db_complete(folder_in[0], file_out)
 
-    # Add scan logs to db
+    # Add scan logs to db or continue adding from specific user folder
     db_complete(folder_in[1], file_out, connect=0)
 
     # Remove noise of DB
@@ -411,18 +423,61 @@ def phonelab_sp(
     # Calculate unique dates in DB
     query = f'SELECT DISTINCT date FROM logs ORDER BY date;'
     df = db_select_df(file_in, query)
-    times = pd.to_datetime(df['date'])
+    dates = pd.to_datetime(df['date'])
+    print('number of days =', len(dates))
 
     query = f'SELECT DISTINCT id FROM ssids ORDER BY id;'
     df = db_select_df(file_in, query)
     ssids = list(df['id'].index)  # 1176 SSID was detected
 
+    query = f'SELECT DISTINCT id FROM users ORDER BY id;'
+    df = db_select_df(file_in, query)
+    users = list(df['id'].index)  # 277 USER was detected
+
+    # Test
+    # dates = [dates[5]]
+    # dates = dates[0:4]
+
     # Cycle through each date, read logs
-    times = [times[0]]  # Test
-    for t in times:
-        print('date:', t.date())
+    # Spatio-temporal matrix of USER & SSID x TIMES (or 24 hours)
+    M = np.zeros((len(users), len(ssids) * 24))
+
+    # Three columns for DF of USER-USER multi-network
+    # Edge exist if two users contact at least one SSID in one-hour time window
+    # Result is a network wtih 3856776 edges (after weighting repeated edges)
+    column_u = []
+    column_v = []
+    column_t = []
+
+    for t in dates:
+        # print('date:', t.date())
         query = f'SELECT user,ssid,time FROM logs WHERE date = \'{t.date()}\' ORDER BY date;'
         df = db_select_df(file_in, query)
         df['time'] = pd.to_datetime(df['time'])
         df['time'] = df['time'].apply(lambda x: x.replace(minute=0, second=0))
-        print(df)
+        for key, group_user_ssid in df.groupby(['time', 'ssid']):
+            # print(key)
+            # print(group_user_ssid['user'].value_counts())
+            group_users = group_user_ssid['user'].unique()
+            for user in group_users:
+                M[user - 1][(key[1] - 1) * 24 + key[0].hour] += 1
+            if len(group_users) > 1:
+                connected_users = list(permutations(group_users, 2))
+                # print('permutation:', connected_users)
+                for element in connected_users:
+                    column_u.append(element[0])
+                    column_v.append(element[1])
+                    column_t.append(key[0])
+    sM = sparse.csr_matrix(M)
+    # print(sM)
+
+    df_network = pd.DataFrame(
+        list(zip(column_u, column_v, column_t)), columns=['u', 'v', 't']
+    )
+    # df_network.to_csv('phonelab_network.csv', index=False)
+    # Remove duplicate edges
+    # df_network = df_network.drop_duplicates()
+    # Covert duplicated edges to weight
+    df_network = df_network.groupby(df_network.columns.tolist()
+                                    ).size().reset_index(name='weight')
+    df_network.to_csv('phonelab_network_weighted.csv', index=False)
