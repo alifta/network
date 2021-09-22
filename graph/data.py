@@ -1,3 +1,4 @@
+from matplotlib.pyplot import axis
 from scipy import sparse
 from itertools import permutations
 import pandas as pd
@@ -379,9 +380,14 @@ def phonelab_to_db(
 
 def phonelab_sp(
     folder_in=[PHONELAB_DB],
-    folder_out=[PHONELAB_DB],
+    folder_out=[PHONELAB_DATA],
     file_in=['phonelab.db'],
-    file_out=['phonelab.db'],
+    file_out=[
+        'user_ssid_connect.npy', 'user_ssid_connect_sparse.npz',
+        'user_day_ssid_connect_sparse.npz', 'user_day_ssid_connect_label.csv',
+        'user_ssid_connect_network.csv',
+        'user_ssid_connect_network_weighted.csv'
+    ],
     label_folder_in='',
     label_folder_out='',
     label_file_in='',
@@ -390,6 +396,7 @@ def phonelab_sp(
 ):
     """
     Connect to PhoneLab database file, create spario-temporal matrix
+    and user-user network over connecting/scanning to same (b)ssid
     """
     def db_select_df(file_in, query):
         try:
@@ -415,10 +422,7 @@ def phonelab_sp(
         folder_out[0],
         label_file_out,
         label_folder_out,
-    )[0]
-
-    # Connect to DB
-    print(file_in)
+    )
 
     # Calculate unique dates in DB
     query = f'SELECT DISTINCT date FROM logs ORDER BY date;'
@@ -442,6 +446,11 @@ def phonelab_sp(
     # Spatio-temporal matrix of USER & SSID x TIMES (or 24 hours)
     M = np.zeros((len(users), len(ssids) * 24))
 
+    # Spatio-temporal matrix USER at each day -> SSID x TIMES
+    # Each row denotes activity of a user in one particular day
+    M_day = np.empty((0, len(ssids) * 24))
+    M_day_label = []
+
     # Three columns for DF of USER-USER multi-network
     # Edge exist if two users contact at least one SSID in one-hour time window
     # Result is a network wtih 3856776 edges (after weighting repeated edges)
@@ -455,12 +464,16 @@ def phonelab_sp(
         df = db_select_df(file_in, query)
         df['time'] = pd.to_datetime(df['time'])
         df['time'] = df['time'].apply(lambda x: x.replace(minute=0, second=0))
+        day_users = df['user'].unique()
+        M_day_dict = {u: np.zeros((1, len(ssids) * 24)) for u in day_users}
         for key, group_user_ssid in df.groupby(['time', 'ssid']):
             # print(key)
             # print(group_user_ssid['user'].value_counts())
             group_users = group_user_ssid['user'].unique()
             for user in group_users:
                 M[user - 1][(key[1] - 1) * 24 + key[0].hour] += 1
+                # Also update M-Day matrix
+                M_day_dict.get(user)[0][(key[1] - 1) * 24 + key[0].hour] += 1
             if len(group_users) > 1:
                 connected_users = list(permutations(group_users, 2))
                 # print('permutation:', connected_users)
@@ -468,16 +481,30 @@ def phonelab_sp(
                     column_u.append(element[0])
                     column_v.append(element[1])
                     column_t.append(key[0])
-    sM = sparse.csr_matrix(M)
-    # print(sM)
+        for user in M_day_dict:
+            M_day = np.append(M_day, M_day_dict[user], axis=0)
+            M_day_label.append(user - 1)
 
-    df_network = pd.DataFrame(
-        list(zip(column_u, column_v, column_t)), columns=['u', 'v', 't']
-    )
-    # df_network.to_csv('phonelab_network.csv', index=False)
+    # Save matrix
+    # np.save(file_out[0], M)
+    # Load the matrix back
+    # np.load(file_out[0])
+
+    # Save the sparse matrix
+    # sM = sparse.csr_matrix(M)
+    # sparse.save_npz(file_out[1], sM)
+    # Read back the sparse matrix
+    # sM = sparse.load_npz(file_out[1])
+    sM_day = sparse.csr_matrix(M_day)
+    sparse.save_npz(file_out[2], sM_day)
+    np.savetxt(file_out[3], M_day_label, delimiter=',', fmt='%s')
+
+    # Dataframe of user-user network
+    # df_network = pd.DataFrame(list(zip(column_u, column_v, column_t)), columns=['u', 'v', 't'])
+    # df_network.to_csv(file_out[4], index=False)
+
     # Remove duplicate edges
     # df_network = df_network.drop_duplicates()
     # Covert duplicated edges to weight
-    df_network = df_network.groupby(df_network.columns.tolist()
-                                    ).size().reset_index(name='weight')
-    df_network.to_csv('phonelab_network_weighted.csv', index=False)
+    # df_network = df_network.groupby(df_network.columns.tolist()).size().reset_index(name='weight')
+    # df_network.to_csv(file_out[5], index=False)

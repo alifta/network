@@ -32,6 +32,7 @@ PHONELAB_DATASET = os.path.join(PHONELAB, 'dataset')
 PHONELAB_CONNECT = os.path.join(PHONELAB_DATASET, 'connect')
 PHONELAB_SCAN = os.path.join(PHONELAB_DATASET, 'scan')
 PHONELAB_DB = os.path.join(PHONELAB, 'db')
+PHONELAB_DATA = os.path.join(PHONELAB, 'data')
 PHONELAB_NETWORK = os.path.join(PHONELAB, 'network')
 
 
