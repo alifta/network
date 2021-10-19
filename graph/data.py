@@ -309,7 +309,7 @@ def phonelab_to_db(
     def db_complete(folder_in, file_out, connect=1):
         folders = folder_walk_folder(folder_in)
         # Enter each user's folder
-        user_id = 67
+        user_id = 226
         query = f'SELECT name FROM users WHERE id >= {user_id} ORDER BY id;'
         folders = db_select_df(file_out, query)['name']
         folders = [os.path.join(folder_in, f) for f in folders]
@@ -508,3 +508,143 @@ def phonelab_sp(
     # Covert duplicated edges to weight
     # df_network = df_network.groupby(df_network.columns.tolist()).size().reset_index(name='weight')
     # df_network.to_csv(file_out[5], index=False)
+
+
+def phonelab_spatial(
+    folder_in=[PHONELAB_DB],
+    folder_out=[PHONELAB_DATA],
+    file_in=['phonelab.db'],
+    file_out=[
+        'user_location_connect.npy',
+        'user_location_connect_sparse.npz',
+        'user_day_location_connect_sparse.npz',
+        'user_day_location_connect_label.csv',
+        'user_location_connect_network.csv',
+        'user_location_connect_network_weighted.csv',
+    ],
+    label_folder_in='',
+    label_folder_out='',
+    label_file_in='',
+    label_file_out='',
+    output=True
+):
+    """
+    Connect to PhoneLab database file, create spatial matrix without time in the
+    columns
+    """
+    def db_select_df(file_in, query):
+        try:
+            con = sqlite3.connect(file_in)
+            df = pd.read_sql_query(query, con)
+        except sqlite3.Error as error:
+            print(error)
+        finally:
+            con.close()
+        return df
+
+    # Edit paths
+    file_in = path_edit(
+        file_in,
+        folder_in[0],
+        label_file_in,
+        label_folder_in,
+    )[0]  # Database
+
+    file_out = path_edit(
+        file_out,
+        folder_out[0],
+        label_file_out,
+        label_folder_out,
+    )  # Output files
+
+    # Calculate unique dates in DB
+    query = f'SELECT DISTINCT date FROM logs ORDER BY date;'
+    df = db_select_df(file_in, query)
+    dates = pd.to_datetime(df['date'])
+
+    # Calculate unique ssid (locations) in DB
+    query = f'SELECT DISTINCT id FROM ssids ORDER BY id;'
+    df = db_select_df(file_in, query)
+    ssids = list(df['id'].index)  # 1176 SSID was detected
+
+    # Calculate unique users in DB
+    query = f'SELECT DISTINCT id FROM users ORDER BY id;'
+    df = db_select_df(file_in, query)
+    users = list(df['id'].index)  # 277 USER was detected
+
+    # Cycle through each date and read logs then create ...
+    # Spatial matrix of USER & SSID (or Locations)
+    M = np.zeros((len(users), len(ssids)))
+
+    # Spatial matrix of USER(s) at each day -> SSID (or Locations)
+    # Each row denotes activity of a user in one particular day
+    M_day = np.empty((0, len(ssids)))
+    M_day_label = []
+
+    # Three columns for DF of USER-USER multi-network
+    # Edge exist if two users contact to at least one SSID in one-DAY time window
+    # Result is a network wtih X edges (after weighting repeated edges)
+    column_u = []
+    column_v = []
+    column_t = []  # Here the TIME is only the DATE of connections
+    column_l = []  # Location or SSID
+
+    for t in dates:
+        # Select USER-SSID for each date
+        query = f'SELECT user,ssid FROM logs WHERE date = \'{t.date()}\';'
+        df = db_select_df(file_in, query)
+        day_users = df['user'].unique()
+        # Create multiple rows based on number of unique users
+        M_day_dict = {u: np.zeros((1, len(ssids))) for u in day_users}
+        for key, group_user_ssid in df.groupby(['ssid']):
+            group_users = group_user_ssid['user'].unique()
+            for user in group_users:
+                # Update matrix M
+                M[user - 1][(key - 1)] += 1
+                # Also update matrix M-Day
+                M_day_dict.get(user)[0][(key - 1)] += 1
+            if len(group_users) > 1:
+                # Update User-User network
+                connected_users = list(permutations(group_users, 2))
+                for element in connected_users:
+                    column_u.append(element[0])
+                    column_v.append(element[1])
+                    column_t.append(t.date())
+                    column_l.append(key)
+                # TODO the network could have repeated edges due to users ...
+                # Connecting via different SSID in one day, which can be cleaned
+                # Later convert to proper weight
+        for user in M_day_dict:
+            M_day = np.append(M_day, M_day_dict[user], axis=0)
+            M_day_label.append(user - 1)
+
+    # Save matrix M
+    np.save(file_out[0], M)
+
+    # Save the sparse version of matrix M
+    sM = sparse.csr_matrix(M)
+    sparse.save_npz(file_out[1], sM)
+
+    # Save the sparse version of matrix M-Day
+    sM_day = sparse.csr_matrix(M_day)
+    sparse.save_npz(file_out[2], sM_day)
+
+    # Save labels
+    np.savetxt(file_out[3], M_day_label, delimiter=',', fmt='%s')
+
+    # Dataframe of user-user network
+    df_network = pd.DataFrame(
+        list(zip(column_u, column_v, column_t, column_l)),
+        columns=['u', 'v', 't', 'l']
+    )
+    df_network.to_csv(file_out[4], index=False)
+
+    # Remove duplicate edges
+    df_network = df_network.drop_duplicates()
+    # Drop location of connections
+    df_network.drop(columns=['l'])
+    # Covert duplicated edges to weight
+    df_network = df_network.groupby(
+        df_network.columns.tolist()
+    ).size().reset_index(name='w')  # Weight of edges as 'w'
+    df_network.to_csv(file_out[5], index=False)
