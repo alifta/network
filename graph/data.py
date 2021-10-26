@@ -309,7 +309,7 @@ def phonelab_to_db(
     def db_complete(folder_in, file_out, connect=1):
         folders = folder_walk_folder(folder_in)
         # Enter each user's folder
-        user_id = 226
+        user_id = 248
         query = f'SELECT name FROM users WHERE id >= {user_id} ORDER BY id;'
         folders = db_select_df(file_out, query)['name']
         folders = [os.path.join(folder_in, f) for f in folders]
@@ -519,6 +519,7 @@ def phonelab_spatial(
         'user_location_connect_sparse.npz',
         'user_day_location_connect_sparse.npz',
         'user_day_location_connect_label.csv',
+        'user_day_location_connect_label_dow.csv',
         'user_location_connect_network.csv',
         'user_location_connect_network_weighted.csv',
     ],
@@ -557,20 +558,29 @@ def phonelab_spatial(
         label_folder_out,
     )  # Output files
 
+    print(file_out)
+
     # Calculate unique dates in DB
-    query = f'SELECT DISTINCT date FROM logs ORDER BY date;'
+    # query = f'SELECT DISTINCT date FROM logs ORDER BY date;'
+    query = f'SELECT DISTINCT date FROM logs WHERE connect = 1 ORDER BY date;'
     df = db_select_df(file_in, query)
     dates = pd.to_datetime(df['date'])
 
     # Calculate unique ssid (locations) in DB
-    query = f'SELECT DISTINCT id FROM ssids ORDER BY id;'
+    # query = f'SELECT DISTINCT id FROM ssids ORDER BY id;'
+    query = f'SELECT DISTINCT ssid FROM logs WHERE connect = 1 ORDER BY ssid;'
     df = db_select_df(file_in, query)
-    ssids = list(df['id'].index)  # 1176 SSID was detected
+    ssids = list(df['ssid'])  # 1176 SSID was detected
 
     # Calculate unique users in DB
-    query = f'SELECT DISTINCT id FROM users ORDER BY id;'
+    # query = f'SELECT DISTINCT id FROM users ORDER BY id;'
+    query = f'SELECT DISTINCT user FROM logs WHERE connect = 1 ORDER BY user;'
     df = db_select_df(file_in, query)
-    users = list(df['id'].index)  # 277 USER was detected
+    users = list(df['user'])
+    # 270 USER was detected (out of 277) meaning 7 user do not have data
+
+    # Create UserName -> UserID dictionary
+    users = {uName: uId for uId, uName in enumerate(users)}
 
     # Cycle through each date and read logs then create ...
     # Spatial matrix of USER & SSID (or Locations)
@@ -580,6 +590,7 @@ def phonelab_spatial(
     # Each row denotes activity of a user in one particular day
     M_day = np.empty((0, len(ssids)))
     M_day_label = []
+    M_day_label_dow = []  # Day of the week
 
     # Three columns for DF of USER-USER multi-network
     # Edge exist if two users contact to at least one SSID in one-DAY time window
@@ -600,7 +611,7 @@ def phonelab_spatial(
             group_users = group_user_ssid['user'].unique()
             for user in group_users:
                 # Update matrix M
-                M[user - 1][(key - 1)] += 1
+                M[users[user] - 1][(key - 1)] += 1
                 # Also update matrix M-Day
                 M_day_dict.get(user)[0][(key - 1)] += 1
             if len(group_users) > 1:
@@ -616,7 +627,8 @@ def phonelab_spatial(
                 # Later convert to proper weight
         for user in M_day_dict:
             M_day = np.append(M_day, M_day_dict[user], axis=0)
-            M_day_label.append(user - 1)
+            M_day_label.append(user)
+            M_day_label_dow.append(t.weekday())
 
     # Save matrix M
     np.save(file_out[0], M)
@@ -631,20 +643,21 @@ def phonelab_spatial(
 
     # Save labels
     np.savetxt(file_out[3], M_day_label, delimiter=',', fmt='%s')
+    np.savetxt(file_out[4], M_day_label_dow, delimiter=',', fmt='%s')
 
     # Dataframe of user-user network
     df_network = pd.DataFrame(
         list(zip(column_u, column_v, column_t, column_l)),
         columns=['u', 'v', 't', 'l']
     )
-    df_network.to_csv(file_out[4], index=False)
+    df_network.to_csv(file_out[5], index=False)
 
     # Remove duplicate edges
     df_network = df_network.drop_duplicates()
     # Drop location of connections
-    df_network.drop(columns=['l'])
+    df_network.drop(columns=['l'], inplace=True)
     # Covert duplicated edges to weight
     df_network = df_network.groupby(
         df_network.columns.tolist()
     ).size().reset_index(name='w')  # Weight of edges as 'w'
-    df_network.to_csv(file_out[5], index=False)
+    df_network.to_csv(file_out[6], index=False)

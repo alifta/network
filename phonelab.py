@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import pandas as pd
 
@@ -16,6 +18,9 @@ from graph.data import *
 
 
 def main():
+    # Starting time
+    start = time.time()
+
     phonelab_to_db(
         folder_in=[
             '/home/ali/Projects/Network/data/phonelab/dataset/connect',
@@ -30,6 +35,17 @@ def main():
     #     label_folder_in='',
     #     label_file_in='connect'
     # )
+
+    # phonelab_spatial(
+    #     folder_in=['/home/ali/Projects/Network/data/phonelab/db'],
+    #     file_in=['phonelab.db'],
+    #     label_folder_in='',
+    #     label_file_in='connect'
+    # )
+
+    # Ending time
+    end = time.time()
+    print(f'Program runtime is {end - start} seconds')
 
 
 if __name__ == "__main__":
