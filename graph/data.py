@@ -309,7 +309,7 @@ def phonelab_to_db(
     def db_complete(folder_in, file_out, connect=1):
         folders = folder_walk_folder(folder_in)
         # Enter each user's folder
-        user_id = 248
+        user_id = 256
         query = f'SELECT name FROM users WHERE id >= {user_id} ORDER BY id;'
         folders = db_select_df(file_out, query)['name']
         folders = [os.path.join(folder_in, f) for f in folders]
@@ -510,6 +510,164 @@ def phonelab_sp(
     # df_network.to_csv(file_out[5], index=False)
 
 
+def phonelab_sp_selected(
+    folder_in=[PHONELAB_DB, PHONELAB_DATA],
+    folder_out=[PHONELAB_DATA],
+    file_in=['phonelab.db', 'user_day_ssid_selected_ssid.csv'],
+    file_out=[
+        'user_ssid_connect.npy',
+        'user_ssid_connect_sparse.npz',
+        'user_day_ssid_connect_sparse.npz',
+        'user_day_ssid_connect_label.csv',
+        'user_day_ssid_connect_label_dow.csv',
+        'user_ssid_connect_network.csv',
+        'user_ssid_connect_network_weighted.csv',
+    ],
+    label_folder_in='',
+    label_folder_out='',
+    label_file_in='',
+    label_file_out='selected',
+    output=True
+):
+    """
+    Connect to PhoneLab database file, create spario-temporal matrix
+    only for selected (important) SSID that were calculated before
+    and create user-user network connecting/scanning to same SSID
+    """
+    # Edit paths
+    file_in_1 = path_edit(
+        file_in,
+        folder_in[0],
+        label_file_in,
+        label_folder_in,
+    )[0]  # DB file
+    file_in_2 = path_edit(
+        file_in,
+        folder_in[1],
+        '',
+        '',
+    )[1]  # Selected SSID file
+    file_out = path_edit(
+        file_out,
+        folder_out[0],
+        label_file_out,
+        label_folder_out,
+    )  # Output files
+
+    # Calculate unique dates in DB
+    # query = f'SELECT DISTINCT date FROM logs ORDER BY date;'
+    query = f'SELECT DISTINCT date FROM logs WHERE connect = 1 ORDER BY date;'
+    df = db_select_df(file_in_1, query)
+    dates = pd.to_datetime(df['date'])
+
+    # Calculate unique ssid (locations) in DB
+    # query = f'SELECT DISTINCT id FROM ssids ORDER BY id;'
+    query = f'SELECT DISTINCT ssid FROM logs WHERE connect = 1 ORDER BY ssid;'
+    df = db_select_df(file_in_1, query)
+    ssids_all = list(df['ssid'])  # A total of 1176 SSID was detected
+
+    # Read selected SSID from file
+    ssids = pd.read_csv(
+        file_in_2, index_col=False, header=None, names=['ssid']
+    )['ssid'].astype(
+        int
+    ).values  # 253 selected SSID (2 important for each user)
+
+    print(ssids)
+
+    # Create SSID-Name -> SSID-ID dictionary
+    ssids = {sName: sId for sId, sName in enumerate(ssids)}
+
+    # Calculate unique users in DB
+    # query = f'SELECT DISTINCT id FROM users ORDER BY id;'
+    query = f'SELECT DISTINCT user FROM logs WHERE connect = 1 ORDER BY user;'
+    df = db_select_df(file_in_1, query)
+    users = list(df['user'])
+    # 270 USER was detected (out of 277) meaning 7 user do not have data
+
+    # Create UserName -> UserID dictionary
+    users = {uName: uId for uId, uName in enumerate(users)}
+
+    # Spatio-temporal matrix of USER & SSID x TIMES (or 24 hours)
+    M = np.zeros((len(users), len(ssids) * 24))
+
+    # Spatio-temporal matrix USER at each day -> SSID x TIMES
+    # Each row denotes activity of a user in one particular day
+    M_day = np.empty((0, len(ssids) * 24))
+    M_day_label = []
+    M_day_label_dow = []  # Day of the week
+
+    # Three columns for DF of USER-USER multi-network
+    # Edge exist if two users contact at least one SSID in one-hour time window
+    # Result is a network wtih 3856776 edges (after weighting repeated edges)
+    column_u = []
+    column_v = []
+    column_t = []
+
+    # Cycle through each date and analyze the logs ...
+    for t in dates:
+        print('date:', t.date())
+        query = f'SELECT user,ssid,time FROM logs WHERE date = \'{t.date()}\' ORDER BY date;'
+        # Do a SQL select query
+        df = db_select_df(file_in_1, query)
+        # Covert time column to datetime format and the right time scale
+        df['time'] = pd.to_datetime(df['time'])
+        df['time'] = df['time'].apply(lambda x: x.replace(minute=0, second=0))
+        # Extract unique active users in that date
+        day_users = df['user'].unique()
+        # Create a dict/row of data for each active user
+        M_day_dict = {u: np.zeros((1, len(ssids) * 24)) for u in day_users}
+        # Find users connect to same SSID in underlying date
+        for key, group_user_ssid in df.groupby(['time', 'ssid']):
+            # Process the data if SSID is among the selected SSID
+            if key[1] in ssids:
+                group_users = group_user_ssid['user'].unique()
+                for user in group_users:
+                    M[users[user]][ssids[key[1]] * 24 + key[0].hour] += 1
+                    # Also update M-Day matrix
+                    M_day_dict.get(user)[0][ssids[key[1]] * 24 +
+                                            key[0].hour] += 1
+                if len(group_users) > 1:
+                    connected_users = list(permutations(group_users, 2))
+                    for element in connected_users:
+                        column_u.append(element[0])
+                        column_v.append(element[1])
+                        column_t.append(key[0])
+        for user in M_day_dict:
+            if np.any(M_day_dict[user]):
+                M_day = np.append(M_day, M_day_dict[user], axis=0)
+                M_day_label.append(user)
+                M_day_label_dow.append(t.weekday())
+
+    # Save matrix
+    np.save(file_out[0], M)
+
+    # Save the sparse matrix
+    sM = sparse.csr_matrix(M)
+    sparse.save_npz(file_out[1], sM)
+
+    # Save User-Day sparse matrix
+    sM_day = sparse.csr_matrix(M_day)
+    sparse.save_npz(file_out[2], sM_day)
+
+    # Save labels
+    np.savetxt(file_out[3], M_day_label, delimiter=',', fmt='%s')
+    np.savetxt(file_out[4], M_day_label_dow, delimiter=',', fmt='%s')
+
+    # Dataframe of user-user network
+    df_network = pd.DataFrame(
+        list(zip(column_u, column_v, column_t)), columns=['u', 'v', 't']
+    )
+    df_network.to_csv(file_out[5], index=False)
+
+    # Remove duplicate edges
+    df_network = df_network.drop_duplicates()
+    # Covert duplicated edges to weight
+    df_network = df_network.groupby(df_network.columns.tolist()
+                                    ).size().reset_index(name='w')
+    df_network.to_csv(file_out[6], index=False)
+
+
 def phonelab_spatial(
     folder_in=[PHONELAB_DB],
     folder_out=[PHONELAB_DATA],
@@ -558,8 +716,6 @@ def phonelab_spatial(
         label_folder_out,
     )  # Output files
 
-    print(file_out)
-
     # Calculate unique dates in DB
     # query = f'SELECT DISTINCT date FROM logs ORDER BY date;'
     query = f'SELECT DISTINCT date FROM logs WHERE connect = 1 ORDER BY date;'
@@ -571,6 +727,9 @@ def phonelab_spatial(
     query = f'SELECT DISTINCT ssid FROM logs WHERE connect = 1 ORDER BY ssid;'
     df = db_select_df(file_in, query)
     ssids = list(df['ssid'])  # 1176 SSID was detected
+
+    # Create SSID-Name -> SSID-ID dictionary
+    ssids = {sName: sId for sId, sName in enumerate(ssids)}
 
     # Calculate unique users in DB
     # query = f'SELECT DISTINCT id FROM users ORDER BY id;'
@@ -611,9 +770,9 @@ def phonelab_spatial(
             group_users = group_user_ssid['user'].unique()
             for user in group_users:
                 # Update matrix M
-                M[users[user] - 1][(key - 1)] += 1
+                M[users[user]][ssids[key]] += 1
                 # Also update matrix M-Day
-                M_day_dict.get(user)[0][(key - 1)] += 1
+                M_day_dict.get(user)[0][ssids[key]] += 1
             if len(group_users) > 1:
                 # Update User-User network
                 connected_users = list(permutations(group_users, 2))
@@ -629,6 +788,9 @@ def phonelab_spatial(
             M_day = np.append(M_day, M_day_dict[user], axis=0)
             M_day_label.append(user)
             M_day_label_dow.append(t.weekday())
+
+    # Check if any of matrix's rows has all zero values
+    # print(np.where(~M.any(axis=1)))
 
     # Save matrix M
     np.save(file_out[0], M)

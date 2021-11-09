@@ -92,6 +92,20 @@ def db_row_count(db, table, output=False):
     return count
 
 
+def db_select_df(file_in, query):
+    """
+    Execute a single SELECT query on database using Pandas dataframe
+    """
+    try:
+        con = sqlite3.connect(file_in)
+        df = pd.read_sql_query(query, con)
+    except sqlite3.Error as error:
+        print(error)
+    finally:
+        con.close()
+    return df
+
+
 # Files & Folders
 # ---------------
 
