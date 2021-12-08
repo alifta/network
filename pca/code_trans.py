@@ -7,7 +7,7 @@ from scipy import sparse
 
 from sklearn.preprocessing import MaxAbsScaler
 
-from helpers import *
+from utils.helpers import *
 
 
 def main():
