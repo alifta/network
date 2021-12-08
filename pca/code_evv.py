@@ -1,13 +1,10 @@
 import os
 import sys
-
 import numpy as np
-import pandas as pd
 from scipy import sparse
-
 from sklearn.preprocessing import MaxAbsScaler
 
-from utils.helpers import *
+from utils import paths
 
 
 def main():
@@ -21,6 +18,7 @@ def main():
     l3 = 'connect'  # connect / observe
     row_scale = 0
     f1 = 'selected_0'
+    DATA = paths.PHONELAB_DATA
 
     # Inputs
     args = sys.argv[:]

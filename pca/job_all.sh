@@ -17,12 +17,12 @@ source ~/py37_ski/bin/activate
 # python ./code_evv.py selected_4
 # python ./code_evv.py selected_5
 
-python ./code_evv.py selected_0_t user_day spatial_temporal connect 1
-# python ./code_evv.py selected_1_t user_day spatial_temporal connect 1
-python ./code_evv.py selected_2_t user_day spatial_temporal connect 1
-python ./code_evv.py selected_3_t user_day spatial_temporal connect 1
-python ./code_evv.py selected_4_t user_day spatial_temporal connect 1
-python ./code_evv.py selected_5_t user_day spatial_temporal connect 1
+python ./code_evv.py t_selected_0 user_day spatial_temporal connect 1
+# python ./code_evv.py t_selected_1 user_day spatial_temporal connect 1
+python ./code_evv.py t_selected_2 user_day spatial_temporal connect 1
+python ./code_evv.py t_selected_3 user_day spatial_temporal connect 1
+python ./code_evv.py t_selected_4 user_day spatial_temporal connect 1
+python ./code_evv.py t_selected_5 user_day spatial_temporal connect 1
 
 # python ./code_trans.py selected_0
 # python ./code_trans.py selected_1

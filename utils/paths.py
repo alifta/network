@@ -4,6 +4,7 @@ import os
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DATA = os.path.join(ROOT, 'data')
 PHONELAB = os.path.join(DATA, 'phonelab')
+PHONELAB_DB = os.path.join(PHONELAB, 'db')
 PHONELAB_DATA = os.path.join(PHONELAB, 'data')
 PCA = os.path.join(ROOT, 'pca')
 
