@@ -1,8 +1,7 @@
 #!/bin/bash
-#SBATCH --time=2-00:00:00
-#SBATCH --nodes=1
-#SBATCH --ntasks=32
-#SBATCH --mem=125G
+#SBATCH --time=0-06:00:00
+#SBATCH --cpus-per-task=16
+#SBATCH --mem-per-cpu=2048M
 #SBATCH --account=def-yuanzhu
 #SBATCH --mail-user=af4166@mun.ca
 #SBATCH --mail-type=ALL
@@ -17,12 +16,28 @@ source ~/py37_ski/bin/activate
 # python ./code_evv.py selected_4
 # python ./code_evv.py selected_5
 
-python ./code_evv.py t_selected_0 user_day spatial_temporal connect 1
+python ./code_evv.py selected_0 user_day spatial connect
+# python ./code_evv.py selected_1 user_day spatial connect
+python ./code_evv.py selected_2 user_day spatial connect
+python ./code_evv.py selected_3 user_day spatial connect
+python ./code_evv.py selected_4 user_day spatial connect
+python ./code_evv.py selected_5 user_day spatial connect
+
+# python ./code_evv.py t_selected_0 user_day spatial_temporal connect 1
 # python ./code_evv.py t_selected_1 user_day spatial_temporal connect 1
-python ./code_evv.py t_selected_2 user_day spatial_temporal connect 1
-python ./code_evv.py t_selected_3 user_day spatial_temporal connect 1
-python ./code_evv.py t_selected_4 user_day spatial_temporal connect 1
-python ./code_evv.py t_selected_5 user_day spatial_temporal connect 1
+# python ./code_evv.py t_selected_2 user_day spatial_temporal connect 1
+# python ./code_evv.py t_selected_3 user_day spatial_temporal connect 1
+# python ./code_evv.py t_selected_4 user_day spatial_temporal connect 1
+# python ./code_evv.py t_selected_5 user_day spatial_temporal connect 1
+
+python ./code_evv.py t_selected_0 user_day spatial connect 1
+# python ./code_evv.py t_selected_1 user_day spatial connect 1
+python ./code_evv.py t_selected_2 user_day spatial connect 1
+python ./code_evv.py t_selected_3 user_day spatial connect 1
+python ./code_evv.py t_selected_4 user_day spatial connect 1
+python ./code_evv.py t_selected_5 user_day spatial connect 1
+
+# ---
 
 # python ./code_trans.py selected_0
 # python ./code_trans.py selected_1
