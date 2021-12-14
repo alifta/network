@@ -3,7 +3,6 @@ from scipy import sparse
 import time
 from datetime import datetime
 from itertools import permutations
-from sklearn.preprocessing import MaxAbsScaler
 from pprint import pprint
 
 from utils.paths import *
@@ -767,8 +766,7 @@ def phonelab_spatial_temporal_selected(
         'user_day_spatial_temporal_connect_label_dow.csv',
         'user_spatial_temporal_connect_network.csv',
         'user_spatial_temporal_connect_network_weighted.csv',
-        'selected_ssid.csv',
-        'users.csv',
+        'selected_ssid.csv'
     ],
     label_folder_in='',
     label_folder_out='spatial_temporal',
@@ -957,74 +955,3 @@ def phonelab_spatial_temporal_selected(
     # Save weighted user-user network edges
     df_network.to_csv(file_out[5], index=False)
 
-
-def phonelab_eigen(
-    folder_in=[PHONELAB_DATA],
-    folder_out=[PHONELAB_DATA],
-    l1='user_day',
-    l2='spatial_temporal',
-    l3='connect',
-    selected=0,
-    row_scale=False,
-    output=True
-):
-    """
-    Calculate eigen values and eigen vectors
-    """
-    # Input files
-    file_in = []
-    file_in.append(f'{l1}_{l2}_{l3}.npz')
-    file_in = path_edit(
-        file_in,
-        folder_in[0] + f'/selected_{selected}',
-        '',
-        l2,
-    )
-    if output:
-        print('Input files:')
-        print(file_in)
-
-    # Output files
-    file_out = []
-    file_out.append(f'{l1}_{l2}_{l3}_eigen_vals.npy')
-    file_out.append(f'{l1}_{l2}_{l3}_eigen_vecs.npz')
-    row_dir = ''
-    if row_scale: row_dir = 'transpose'
-    file_out = path_edit(
-        file_out,
-        folder_out[0] + f'/{row_dir}/selected_{selected}',
-        '',
-        l2,
-    )
-    if output:
-        print('\nOutput files:')
-        pprint(file_out)
-
-    # Make sure output folder exist, if not create it
-    os.makedirs(
-        os.path.join(folder_out[0], row_dir, f'selected_{selected}', l2),
-        exist_ok=True
-    )
-
-    # Load matrix
-    M = sparse.load_npz(file_in[0]).toarray()
-
-    # Normalize data matrix
-    scaler = MaxAbsScaler()
-    if not row_scale:
-        # Columns-wise
-        M = scaler.fit_transform(M)
-    else:
-        # Row-wise
-        scaler.fit(M.T)
-        M = scaler.transform(M.T).T
-
-    # Create covariance matrix
-    cov_mat = np.cov(M.T)
-
-    # Calculate eigen vectors and eigen values
-    eigen_vals, eigen_vecs = np.linalg.eig(cov_mat)
-
-    # Save files
-    np.save(file_out[0], eigen_vals)
-    sparse.save_npz(file_out[1], sparse.csc_matrix(eigen_vecs))

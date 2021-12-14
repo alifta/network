@@ -511,7 +511,7 @@ def phonelab_sp_selected(
         'user_day_spatial_temporal_connect_label_dow.csv',
         'user_spatial_temporal_connect_network.csv',
         'user_spatial_temporal_connect_network_weighted.csv',
-        'selected_ssid.csv'
+        'selected_ssid.csv',
     ],
     label_folder_in='',
     label_folder_out='',

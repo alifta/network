@@ -1,15 +1,16 @@
 #!/bin/bash
-#SBATCH --time=0-06:00:00
+#SBATCH --time=0-01:00:00
 #SBATCH --cpus-per-task=16
-#SBATCH --mem-per-cpu=2048M
+#SBATCH --mem=16G
+#SBATCH --output=%j.out
 #SBATCH --account=def-yuanzhu
 #SBATCH --mail-user=af4166@mun.ca
 #SBATCH --mail-type=ALL
 
 module load python/3.7
-source ~/py37_ski/bin/activate
+source ~/py37_jupyter/bin/activate
 
-# python ./code_evv.py selected_0
+# python ../pca/eigen.py selected_0
 # python ./code_evv.py selected_1
 # python ./code_evv.py selected_2
 # python ./code_evv.py selected_3
@@ -17,7 +18,7 @@ source ~/py37_ski/bin/activate
 # python ./code_evv.py selected_5
 
 python ./code_evv.py selected_0 user_day spatial connect
-# python ./code_evv.py selected_1 user_day spatial connect
+python ./code_evv.py selected_1 user_day spatial connect
 python ./code_evv.py selected_2 user_day spatial connect
 python ./code_evv.py selected_3 user_day spatial connect
 python ./code_evv.py selected_4 user_day spatial connect
